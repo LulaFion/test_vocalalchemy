@@ -1,0 +1,97 @@
+{
+  "id": "f8404ac7",
+  "name": "test",
+  "language": "en",
+  "status": "failed",
+  "progress": 80.0,
+  "current_step": "Training GPT model...",
+  "error": "GPT training failed: Seed set to 1234\r\nC:\\Users\\user\\Documents\\Audio\\GPT-SoVITS\\GPT-SoVITS-v2pro-20250604\\runtime\\lib\\site-packages\\pytorch_lightning\\trainer\\connectors\\accelerator_connector.py:551: You passed `Trainer(accelerator='cpu', precision='16-mixed')` but AMP with fp16 is not supported on CPU. Using `precision='bf16-mixed'` instead.\r\nUsing bfloat16 Automatic Mixed Precision (AMP)\r\nGPU available: False, used: False\r\nTPU available: False, using: 0 TPU cores\r\nIPU available: False, using: 0 IPUs\r\nHPU available: False, using: 0 HPUs\r\nMissing logger folder: C:\\Users\\user\\Documents\\Audio\\GPT-SoVITS\\VocalAlchemy\\backend\\data\\training_projects\\f8404ac7\\output\\test\\logs_s1_v2Pro\\logs_s1_v2Pro\r\n\r\n  | Name  | Type                 | Params\r\n-----------------------------------------------\r\n0 | model | Text2SemanticDecoder | 77.6 M\r\n-----------------------------------------------\r\n77.6 M    Trainable params\r\n0         Non-trainable params\r\n77.6 M    Total params\r\n310.426   Total estimated model params size (MB)\r\nC:\\Users\\user\\Documents\\Audio\\GPT-SoVITS\\GPT-SoVITS-v2pro-20250604\\runtime\\lib\\site-packages\\pytorch_lightning\\loops\\fit_loop.py:293: The number of training batches (49) is smaller than the logging interval Trainer(log_every_n_steps=50). Set a lower value for log_every_n_steps if you want to see logs for the training epoch.\r\nTraceback (most recent call last):\r\n  File \"C:\\Users\\user\\Documents\\Audio\\GPT-SoVITS\\GPT-SoVITS-v2pro-20250604\\GPT_SoVITS\\s1_train.py\", line 171, in <module>\r\n    main(args)\r\n  File \"C:\\Users\\user\\Documents\\Audio\\GPT-SoVITS\\GPT-SoVITS-v2pro-20250604\\GPT_SoVITS\\s1_train.py\", line 147, in main\r\n    trainer.fit(model, data_module, ckpt_path=ckpt_path)\r\n  File \"C:\\Users\\user\\Documents\\Audio\\GPT-SoVITS\\GPT-SoVITS-v2pro-20250604\\runtime\\lib\\site-packages\\pytorch_lightning\\trainer\\trainer.py\", line 544, in fit\r\n    call._call_and_handle_interrupt(\r\n  File \"C:\\Users\\user\\Documents\\Audio\\GPT-SoVITS\\GPT-SoVITS-v2pro-20250604\\runtime\\lib\\site-packages\\pytorch_lightning\\trainer\\call.py\", line 44, in _call_and_handle_interrupt\r\n    return trainer_fn(*args, **kwargs)\r\n  File \"C:\\Users\\user\\Documents\\Audio\\GPT-SoVITS\\GPT-SoVITS-v2pro-20250604\\runtime\\lib\\site-packages\\pytorch_lightning\\trainer\\trainer.py\", line 580, in _fit_impl\r\n    self._run(model, ckpt_path=ckpt_path)\r\n  File \"C:\\Users\\user\\Documents\\Audio\\GPT-SoVITS\\GPT-SoVITS-v2pro-20250604\\runtime\\lib\\site-packages\\pytorch_lightning\\trainer\\trainer.py\", line 989, in _run\r\n    results = self._run_stage()\r\n  File \"C:\\Users\\user\\Documents\\Audio\\GPT-SoVITS\\GPT-SoVITS-v2pro-20250604\\runtime\\lib\\site-packages\\pytorch_lightning\\trainer\\trainer.py\", line 1035, in _run_stage\r\n    self.fit_loop.run()\r\n  File \"C:\\Users\\user\\Documents\\Audio\\GPT-SoVITS\\GPT-SoVITS-v2pro-20250604\\runtime\\lib\\site-packages\\pytorch_lightning\\loops\\fit_loop.py\", line 202, in run\r\n    self.advance()\r\n  File \"C:\\Users\\user\\Documents\\Audio\\GPT-SoVITS\\GPT-SoVITS-v2pro-20250604\\runtime\\lib\\site-packages\\pytorch_lightning\\loops\\fit_loop.py\", line 359, in advance\r\n    self.epoch_loop.run(self._data_fetcher)\r\n  File \"C:\\Users\\user\\Documents\\Audio\\GPT-SoVITS\\GPT-SoVITS-v2pro-20250604\\runtime\\lib\\site-packages\\pytorch_lightning\\loops\\training_epoch_loop.py\", line 136, in run\r\n    self.advance(data_fetcher)\r\n  File \"C:\\Users\\user\\Documents\\Audio\\GPT-SoVITS\\GPT-SoVITS-v2pro-20250604\\runtime\\lib\\site-packages\\pytorch_lightning\\loops\\training_epoch_loop.py\", line 242, in advance\r\n    batch_output = self.manual_optimization.run(kwargs)\r\n  File \"C:\\Users\\user\\Documents\\Audio\\GPT-SoVITS\\GPT-SoVITS-v2pro-20250604\\runtime\\lib\\site-packages\\pytorch_lightning\\loops\\optimization\\manual.py\", line 92, in run\r\n    self.advance(kwargs)\r\n  File \"C:\\Users\\user\\Documents\\Audio\\GPT-SoVITS\\GPT-SoVITS-v2pro-20250604\\runtime\\lib\\site-packages\\pytorch_lightning\\loops\\optimization\\manual.py\", line 112, in advance\r\n    training_step_output = call._call_strategy_hook(trainer, \"training_step\", *kwargs.values())\r\n  File \"C:\\Users\\user\\Documents\\Audio\\GPT-SoVITS\\GPT-SoVITS-v2pro-20250604\\runtime\\lib\\site-packages\\pytorch_lightning\\trainer\\call.py\", line 309, in _call_strategy_hook\r\n    output = fn(*args, **kwargs)\r\n  File \"C:\\Users\\user\\Documents\\Audio\\GPT-SoVITS\\GPT-SoVITS-v2pro-20250604\\runtime\\lib\\site-packages\\pytorch_lightning\\strategies\\strategy.py\", line 382, in training_step\r\n    return self.lightning_module.training_step(*args, **kwargs)\r\n  File \"C:\\Users\\user\\Documents\\Audio\\GPT-SoVITS\\GPT-SoVITS-v2pro-20250604\\GPT_SoVITS\\AR\\models\\t2s_lightning_module.py\", line 46, in training_step\r\n    loss, acc = forward(\r\n  File \"C:\\Users\\user\\Documents\\Audio\\GPT-SoVITS\\GPT-SoVITS-v2pro-20250604\\GPT_SoVITS\\AR\\models\\t2s_model.py\", line 501, in forward_old\r\n    xy_dec, _ = self.h(\r\n  File \"C:\\Users\\user\\Documents\\Audio\\GPT-SoVITS\\GPT-SoVITS-v2pro-20250604\\runtime\\lib\\site-packages\\torch\\nn\\modules\\module.py\", line 1501, in _call_impl\r\n    return forward_call(*args, **kwargs)\r\n  File \"C:\\Users\\user\\Documents\\Audio\\GPT-SoVITS\\GPT-SoVITS-v2pro-20250604\\GPT_SoVITS\\AR\\modules\\transformer.py\", line 162, in forward\r\n    output = mod(\r\n  File \"C:\\Users\\user\\Documents\\Audio\\GPT-SoVITS\\GPT-SoVITS-v2pro-20250604\\runtime\\lib\\site-packages\\torch\\nn\\modules\\module.py\", line 1501, in _call_impl\r\n    return forward_call(*args, **kwargs)\r\n  File \"C:\\Users\\user\\Documents\\Audio\\GPT-SoVITS\\GPT-SoVITS-v2pro-20250604\\GPT_SoVITS\\AR\\modules\\transformer.py\", line 295, in forward\r\n    x + self._sa_block(x, src_mask, src_key_padding_mask, cache=cache),\r\n  File \"C:\\Users\\user\\Documents\\Audio\\GPT-SoVITS\\GPT-SoVITS-v2pro-20250604\\GPT_SoVITS\\AR\\modules\\transformer.py\", line 316, in _sa_block\r\n    x = self.self_attn(\r\n  File \"C:\\Users\\user\\Documents\\Audio\\GPT-SoVITS\\GPT-SoVITS-v2pro-20250604\\runtime\\lib\\site-packages\\torch\\nn\\modules\\module.py\", line 1501, in _call_impl\r\n    return forward_call(*args, **kwargs)\r\n  File \"C:\\Users\\user\\Documents\\Audio\\GPT-SoVITS\\GPT-SoVITS-v2pro-20250604\\GPT_SoVITS\\AR\\modules\\activation.py\", line 389, in forward\r\n    attn_output, attn_output_weights = F.multi_head_attention_forward(\r\n  File \"C:\\Users\\user\\Documents\\Audio\\GPT-SoVITS\\GPT-SoVITS-v2pro-20250604\\GPT_SoVITS\\AR\\modules\\patched_mha_with_cache.py\", line 419, in multi_head_attention_forward_patched\r\n    attn_output = scaled_dot_product_attention(q, k, v, attn_mask, dropout_p, is_causal)\r\nRuntimeError: Expected attn_mask dtype to be bool or to match query dtype, but got attn_mask.dtype: float and  query.dtype: struct c10::BFloat16 instead.\r\n",
+  "project_dir": "C:\\Users\\user\\Documents\\Audio\\GPT-SoVITS\\VocalAlchemy\\backend\\data\\training_projects\\f8404ac7",
+  "raw_audio_dir": "C:\\Users\\user\\Documents\\Audio\\GPT-SoVITS\\VocalAlchemy\\backend\\data\\training_projects\\f8404ac7\\raw",
+  "vocals_dir": "C:\\Users\\user\\Documents\\Audio\\GPT-SoVITS\\VocalAlchemy\\backend\\data\\training_projects\\f8404ac7\\vocals",
+  "sliced_dir": "C:\\Users\\user\\Documents\\Audio\\GPT-SoVITS\\VocalAlchemy\\backend\\data\\training_projects\\f8404ac7\\sliced",
+  "list_file_path": "C:\\Users\\user\\Documents\\Audio\\GPT-SoVITS\\VocalAlchemy\\backend\\data\\training_projects\\f8404ac7\\asr_output\\sliced.list",
+  "segments": [
+    {
+      "id": "b64178cb",
+      "filename": "Recording 2026-01-08 134112.wav_0000000000_0000228480.wav",
+      "filepath": "C:\\Users\\user\\Documents\\Audio\\GPT-SoVITS\\VocalAlchemy\\backend\\data\\training_projects\\f8404ac7\\sliced\\Recording 2026-01-08 134112.wav_0000000000_0000228480.wav",
+      "text": " Ezra, this is Zordon. Teleport to the command center immediately so that we may help celebrate your birthday with you.",
+      "language": "en",
+      "duration": null,
+      "start_time": null,
+      "end_time": null
+    },
+    {
+      "id": "6f14e7a0",
+      "filename": "Recording 2026-01-08 134441.wav_0000000000_0000225920.wav",
+      "filepath": "C:\\Users\\user\\Documents\\Audio\\GPT-SoVITS\\VocalAlchemy\\backend\\data\\training_projects\\f8404ac7\\sliced\\Recording 2026-01-08 134441.wav_0000000000_0000225920.wav",
+      "text": " This is Zordon. I am trying to contact Nebula City to wish you a very Merry Christmas.",
+      "language": "en",
+      "duration": null,
+      "start_time": null,
+      "end_time": null
+    },
+    {
+      "id": "0ed17e09",
+      "filename": "Recording 2026-01-08 134513.wav_0000001600_0000261120.wav",
+      "filepath": "C:\\Users\\user\\Documents\\Audio\\GPT-SoVITS\\VocalAlchemy\\backend\\data\\training_projects\\f8404ac7\\sliced\\Recording 2026-01-08 134513.wav_0000001600_0000261120.wav",
+      "text": " Amanda, Aaron, this is Zordon. Teleport to the command center immediately so that we may celebrate the holidays with you.",
+      "language": "en",
+      "duration": null,
+      "start_time": null,
+      "end_time": null
+    },
+    {
+      "id": "c464ae7c",
+      "filename": "Recording 2026-01-08 134546.wav_0000000000_0000256960.wav",
+      "filepath": "C:\\Users\\user\\Documents\\Audio\\GPT-SoVITS\\VocalAlchemy\\backend\\data\\training_projects\\f8404ac7\\sliced\\Recording 2026-01-08 134546.wav_0000000000_0000256960.wav",
+      "text": " Teleport to the command center immediately. The Rangers, Alpha, and I need your help to defeat three evil monster boats.",
+      "language": "en",
+      "duration": null,
+      "start_time": null,
+      "end_time": null
+    },
+    {
+      "id": "d32da26f",
+      "filename": "Recording 2026-01-08 134619.wav_0000017600_0000291200.wav",
+      "filepath": "C:\\Users\\user\\Documents\\Audio\\GPT-SoVITS\\VocalAlchemy\\backend\\data\\training_projects\\f8404ac7\\sliced\\Recording 2026-01-08 134619.wav_0000017600_0000291200.wav",
+      "text": " Tony, this is Zordon. Teleport to the command center immediately so that we may help celebrate your 39th birthday.",
+      "language": "en",
+      "duration": null,
+      "start_time": null,
+      "end_time": null
+    },
+    {
+      "id": "9ed5bdd9",
+      "filename": "Recording 2026-01-08 134648.wav_0000000000_0000181440.wav",
+      "filepath": "C:\\Users\\user\\Documents\\Audio\\GPT-SoVITS\\VocalAlchemy\\backend\\data\\training_projects\\f8404ac7\\sliced\\Recording 2026-01-08 134648.wav_0000000000_0000181440.wav",
+      "text": " Zordon and Travis, this is Zordon. Teleport to the command center immediately.",
+      "language": "en",
+      "duration": null,
+      "start_time": null,
+      "end_time": null
+    },
+    {
+      "id": "e0ad7368",
+      "filename": "Recording 2026-01-08 134722.wav_0000000000_0000224640.wav",
+      "filepath": "C:\\Users\\user\\Documents\\Audio\\GPT-SoVITS\\VocalAlchemy\\backend\\data\\training_projects\\f8404ac7\\sliced\\Recording 2026-01-08 134722.wav_0000000000_0000224640.wav",
+      "text": " This is Zordon. Teleport to the command center immediately, so that we may help celebrate your 35th birthday.",
+      "language": "en",
+      "duration": null,
+      "start_time": null,
+      "end_time": null
+    }
+  ],
+  "gpt_epochs": 10,
+  "gpt_batch_size": 2,
+  "gpt_save_every": 5,
+  "gpt_dpo_training": false,
+  "sovits_epochs": 8,
+  "sovits_batch_size": 2,
+  "sovits_save_every": 4,
+  "sovits_text_lr_weight": 0.4,
+  "gpt_model_path": null,
+  "sovits_model_path": null,
+  "created_at": "2026-01-16T14:38:27.271191"
+}

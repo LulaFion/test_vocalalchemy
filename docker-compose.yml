@@ -1,0 +1,44 @@
+version: '3.8'
+
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: vocalalchemy-backend
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    volumes:
+      # Persist data
+      - ./backend/data:/app/data
+      # Mount GPT-SoVITS models (adjust path as needed)
+      - ${GPTSOVITS_PATH:-/opt/GPT-SoVITS}:/opt/GPT-SoVITS:ro
+    environment:
+      - VOCAL_GPTSOVITS_HOST=${GPTSOVITS_HOST:-host.docker.internal}
+      - VOCAL_GPTSOVITS_PORT=${GPTSOVITS_PORT:-9880}
+      - VOCAL_GPTSOVITS_BASE_PATH=${GPTSOVITS_BASE_PATH:-/opt/GPT-SoVITS}
+    networks:
+      - vocalalchemy-network
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        - VITE_API_URL=${VITE_API_URL:-/api}
+    container_name: vocalalchemy-frontend
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+    networks:
+      - vocalalchemy-network
+
+networks:
+  vocalalchemy-network:
+    driver: bridge
+
+volumes:
+  backend-data:
