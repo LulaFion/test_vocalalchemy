@@ -10,7 +10,7 @@ class TrainingStatus(str, Enum):
     SEPARATING_VOCALS = "separating_vocals"
     SLICING = "slicing"
     TRANSCRIBING = "transcribing"
-    LABELING = "labeling"  # Waiting for user to review/edit labels
+    LABELING = "labeling" 
     PREPARING = "preparing"
     TRAINING_GPT = "training_gpt"
     TRAINING_SOVITS = "training_sovits"

@@ -22,6 +22,12 @@ class LibraryAudioMetadata(BaseModel):
     # Reference audio source
     ref_audio_source: Optional[str] = None  # e.g., "emotion:Male/Happy/happy_01.wav" or "character:Xixi/greeting.wav" or "upload:custom.wav"
 
+    # User-editable display name (shown in library instead of filename)
+    note: Optional[str] = None
+
+    # Linked audio filename (when JSON and audio have different names)
+    audio_filename: Optional[str] = None
+
     # Timestamp
     created_at: Optional[str] = None
 
@@ -48,6 +54,9 @@ class SaveToLibraryRequest(BaseModel):
 
     # Reference audio source
     ref_audio_source: Optional[str] = None  # e.g., "emotion:Male/Happy/happy_01.wav" or "character:Xixi/greeting.wav" or "upload:custom.wav"
+
+    # User-editable display name (shown in library instead of filename)
+    note: Optional[str] = None
 
 
 class LibraryAudioFile(BaseModel):

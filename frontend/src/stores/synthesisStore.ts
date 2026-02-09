@@ -45,6 +45,14 @@ interface SynthesisState {
   generate: (character: Character) => Promise<void>;
   clearOutput: () => void;
   resetParams: () => void;
+  applyLibrarySettings: (settings: {
+    topK: number;
+    topP: number;
+    temperature: number;
+    speed: number;
+    text?: string;
+    textLanguage?: 'en' | 'zh' | 'ja' | 'ko' | 'yue';
+  }) => void;
 }
 
 const defaultParams = {
@@ -182,5 +190,25 @@ export const useSynthesisStore = create<SynthesisState>((set, get) => ({
 
   resetParams: () => {
     set(defaultParams);
+  },
+
+  applyLibrarySettings: (settings) => {
+    const updates: Partial<SynthesisState> = {
+      topK: settings.topK,
+      topP: settings.topP,
+      temperature: settings.temperature,
+      speed: settings.speed,
+    };
+    if (settings.text) {
+      updates.text = settings.text;
+    }
+    if (settings.textLanguage) {
+      updates.textLanguage = settings.textLanguage;
+    }
+    // Clear any previous output when applying new settings
+    updates.generatedAudioUrl = null;
+    updates.audioDuration = null;
+    updates.error = null;
+    set(updates);
   },
 }));

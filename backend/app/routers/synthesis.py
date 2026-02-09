@@ -10,6 +10,7 @@ from ..models.synthesis import SynthesisRequest, SynthesisResponse
 from ..services.character_service import character_service
 from ..services.gptsovits_service import gptsovits_service
 from ..services.gptsovits_launcher import gptsovits_launcher
+from ..services.audio_utils import convert_audio_to_wav, get_audio_info, validate_reference_audio
 from ..config import settings
 
 router = APIRouter(prefix="/api/synthesis", tags=["synthesis"])
@@ -22,29 +23,50 @@ def generate_output_filename() -> str:
 
 
 def cleanup_session_files():
-    """Clean up temporary reference audio files from previous sessions.
-    Called on backend startup to remove old ref_*.wav files.
+    """Clean up temporary and old audio files from previous sessions.
+    Called on backend startup to:
+    - Remove all ref_*.wav and ref_orig_*.* files (temporary reference audio)
+    - Remove VocalAlchemy_*.wav files older than 24 hours (generated audio)
     """
+    import time
+
     if not settings.audio_dir.exists():
         return
 
     # Clean up reference audio files (ref_*.wav and ref_orig_*.*)
-    patterns = [
+    ref_patterns = [
         str(settings.audio_dir / "ref_*.wav"),
         str(settings.audio_dir / "ref_orig_*.*"),
     ]
 
-    cleaned = 0
-    for pattern in patterns:
+    ref_cleaned = 0
+    for pattern in ref_patterns:
         for filepath in glob.glob(pattern):
             try:
                 os.remove(filepath)
-                cleaned += 1
+                ref_cleaned += 1
             except Exception:
                 pass
 
-    if cleaned > 0:
-        print(f"[Synthesis] Cleaned up {cleaned} temporary reference audio files from previous session")
+    if ref_cleaned > 0:
+        print(f"[Synthesis] Cleaned up {ref_cleaned} temporary reference audio files")
+
+    # Clean up generated audio files older than 24 hours
+    cutoff_time = time.time() - (24 * 60 * 60)  # 24 hours ago
+    generated_pattern = str(settings.audio_dir / "VocalAlchemy_*.wav")
+
+    gen_cleaned = 0
+    for filepath in glob.glob(generated_pattern):
+        try:
+            file_mtime = os.path.getmtime(filepath)
+            if file_mtime < cutoff_time:
+                os.remove(filepath)
+                gen_cleaned += 1
+        except Exception:
+            pass
+
+    if gen_cleaned > 0:
+        print(f"[Synthesis] Cleaned up {gen_cleaned} generated audio files older than 24 hours")
 
 
 # Run cleanup on module import (backend startup)
@@ -131,138 +153,27 @@ async def synthesize(
 
         print(f"[Synthesis] Saved original file: {temp_original} ({len(content)} bytes)")
 
-        # Always convert to proper PCM WAV format
-        # GPT-SoVITS uses torchaudio.load() and librosa.load() which need proper WAV format
-        converted = False
+        # Convert to proper PCM WAV format using shared utility
+        converted, error = convert_audio_to_wav(temp_original, temp_audio_path, delete_original=True)
 
-        # First try soundfile (same backend as torchaudio) - most compatible
-        try:
-            import soundfile as sf
-            import numpy as np
+        if converted:
+            print(f"[Synthesis] Audio converted successfully: {temp_audio_path}")
+            ref_audio_path = str(temp_audio_path)
 
-            print(f"[Synthesis] Loading audio with soundfile...")
-            audio_data, sample_rate = sf.read(str(temp_original))
-            print(f"[Synthesis] Original: {sample_rate}Hz, shape={audio_data.shape}, dtype={audio_data.dtype}")
+            # Validate converted audio
+            info = get_audio_info(temp_audio_path)
+            if info:
+                print(f"[Synthesis] Final reference audio: {ref_audio_path}")
+                print(f"[Synthesis]   Size: {info['size_bytes']} bytes")
+                print(f"[Synthesis]   Sample rate: {info['sample_rate']}Hz, Duration: {info['duration']:.2f}s")
 
-            # Convert to mono if stereo
-            if len(audio_data.shape) > 1 and audio_data.shape[1] > 1:
-                audio_data = audio_data.mean(axis=1)
-                print(f"[Synthesis] Converted stereo to mono")
-
-            # Resample if needed (GPT-SoVITS will handle resampling, but let's normalize)
-            # Keep original sample rate - GPT-SoVITS handles resampling internally
-
-            # Ensure float32 format and normalize
-            audio_data = audio_data.astype(np.float32)
-
-            # Normalize to prevent clipping
-            max_val = np.abs(audio_data).max()
-            if max_val > 1.0:
-                audio_data = audio_data / max_val
-
-            # Write with soundfile - same format torchaudio uses
-            sf.write(str(temp_audio_path), audio_data, sample_rate, subtype='PCM_16')
-            converted = True
-            print(f"[Synthesis] Soundfile converted successfully: {temp_audio_path} ({sample_rate}Hz)")
-
-            # Clean up original
-            try:
-                os.remove(temp_original)
-            except Exception:
-                pass
-        except ImportError as e:
-            print(f"[Synthesis] Soundfile not available: {e}")
-        except Exception as e:
-            print(f"[Synthesis] Soundfile conversion failed: {e}")
-
-        # Try librosa as fallback (same library GPT-SoVITS uses)
-        if not converted:
-            try:
-                import librosa
-                import numpy as np
-                import soundfile as sf
-
-                print(f"[Synthesis] Loading audio with librosa...")
-                # librosa.load automatically converts to mono and resamples
-                audio_data, sample_rate = librosa.load(str(temp_original), sr=None, mono=True)
-                print(f"[Synthesis] Loaded: {sample_rate}Hz, shape={audio_data.shape}")
-
-                # Write with soundfile
-                sf.write(str(temp_audio_path), audio_data, sample_rate, subtype='PCM_16')
-                converted = True
-                print(f"[Synthesis] Librosa+soundfile converted successfully: {temp_audio_path}")
-
-                # Clean up original
-                try:
-                    os.remove(temp_original)
-                except Exception:
-                    pass
-            except ImportError as e:
-                print(f"[Synthesis] Librosa not available: {e}")
-            except Exception as e:
-                print(f"[Synthesis] Librosa conversion failed: {e}")
-
-        # Try scipy as another fallback
-        if not converted:
-            try:
-                from scipy.io import wavfile
-                import numpy as np
-
-                print(f"[Synthesis] Loading audio with scipy...")
-                sample_rate, audio_data = wavfile.read(str(temp_original))
-                print(f"[Synthesis] Original: {sample_rate}Hz, shape={audio_data.shape}, dtype={audio_data.dtype}")
-
-                # Convert to float for processing
-                if audio_data.dtype == np.int16:
-                    audio_float = audio_data.astype(np.float32) / 32768.0
-                elif audio_data.dtype == np.int32:
-                    audio_float = audio_data.astype(np.float32) / 2147483648.0
-                elif audio_data.dtype == np.float32 or audio_data.dtype == np.float64:
-                    audio_float = audio_data.astype(np.float32)
-                else:
-                    audio_float = audio_data.astype(np.float32)
-
-                # Convert stereo to mono
-                if len(audio_float.shape) > 1 and audio_float.shape[1] > 1:
-                    audio_float = audio_float.mean(axis=1)
-                    print(f"[Synthesis] Converted stereo to mono")
-
-                # Convert back to int16
-                audio_int16 = np.clip(audio_float * 32767, -32768, 32767).astype(np.int16)
-
-                # Write with scipy
-                wavfile.write(str(temp_audio_path), sample_rate, audio_int16)
-                converted = True
-                print(f"[Synthesis] Scipy converted to PCM WAV successfully: {temp_audio_path}")
-
-                # Clean up original
-                try:
-                    os.remove(temp_original)
-                except Exception:
-                    pass
-            except ImportError as e:
-                print(f"[Synthesis] Scipy not available: {e}")
-            except Exception as e:
-                print(f"[Synthesis] Scipy conversion failed: {e}")
-
-        # If still not converted, use original file
-        if not converted:
+                is_valid, warning = validate_reference_audio(temp_audio_path)
+                if warning:
+                    print(f"[Synthesis] WARNING: {warning}")
+        else:
+            print(f"[Synthesis] Audio conversion failed: {error}")
             print(f"[Synthesis] Using original file (may not work with GPT-SoVITS)")
-            temp_audio_path = temp_original
-
-        ref_audio_path = str(temp_audio_path)
-        # Validate converted audio
-        try:
-            import soundfile as sf
-            ref_data, ref_sr = sf.read(ref_audio_path)
-            ref_duration = len(ref_data) / ref_sr
-            print(f"[Synthesis] Final reference audio: {ref_audio_path}")
-            print(f"[Synthesis]   Size: {os.path.getsize(ref_audio_path)} bytes")
-            print(f"[Synthesis]   Sample rate: {ref_sr}Hz, Duration: {ref_duration:.2f}s, Samples: {len(ref_data)}")
-            if ref_duration < 3 or ref_duration > 10:
-                print(f"[Synthesis] WARNING: Reference audio duration ({ref_duration:.2f}s) outside optimal range (3-10s)")
-        except Exception as e:
-            print(f"[Synthesis] Could not validate reference audio: {e}")
+            ref_audio_path = str(temp_original)
     elif character.model_paths.reference_audio:
         # Use character's default reference audio
         ref_audio_path = character.model_paths.reference_audio

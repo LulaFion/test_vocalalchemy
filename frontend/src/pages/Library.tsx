@@ -1,6 +1,10 @@
 import { useState, useEffect, useRef } from 'react';
-import { PlayIcon, PauseIcon, TrashIcon, ArrowDownTrayIcon, MusicalNoteIcon } from '@heroicons/react/24/solid';
+import { useNavigate } from 'react-router-dom';
+import { PlayIcon, PauseIcon, TrashIcon, ArrowDownTrayIcon, MusicalNoteIcon, Cog6ToothIcon } from '@heroicons/react/24/solid';
 import type { LibraryAudioFile, LibraryAudioMetadata } from '../services/api';
+import { emotionAudioApi, characterAudioApi } from '../services/api';
+import { useSynthesisStore } from '../stores/synthesisStore';
+import { useCharacterStore } from '../stores/characterStore';
 
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:8000/api';
 
@@ -47,11 +51,16 @@ const formatRefSource = (source: string | undefined): string => {
   return source;
 };
 
-// Get the display name for a character - for default/zero-shot, use ref_audio_source name
+// Get the display name for a library item - prioritizes: note > ref_audio_source name > character_name
 const getDisplayName = (metadata: LibraryAudioMetadata | undefined, fallback: string): string => {
   if (!metadata) return fallback;
 
-  // If it's a default/zero-shot character, show the reference audio name instead
+  // First priority: user-edited display name (note)
+  if (metadata.note) {
+    return metadata.note;
+  }
+
+  // Second priority: for default/zero-shot character, show the reference audio name
   if (metadata.character_id === 'default' && metadata.ref_audio_source) {
     // Extract just the filename without extension from ref_audio_source
     // e.g., "emotion:Female/calm/孫小美.wav" -> "孫小美"
@@ -83,6 +92,9 @@ export default function Library() {
   const [playingAudio, setPlayingAudio] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const audioRef = useRef<HTMLAudioElement>(null);
+  const navigate = useNavigate();
+  const { applyLibrarySettings, setReferenceAudio, setReferenceLanguage } = useSynthesisStore();
+  const { selectCharacter, characters } = useCharacterStore();
 
   const fetchAudioFiles = async () => {
     try {
@@ -143,6 +155,126 @@ export default function Library() {
     a.href = url;
     a.download = filename;
     a.click();
+  };
+
+  const handleUseSettings = async (audio: LibraryAudioFile) => {
+    if (!audio.metadata) return;
+
+    // Apply synthesis parameters from library metadata
+    applyLibrarySettings({
+      topK: audio.metadata.top_k,
+      topP: audio.metadata.top_p,
+      temperature: audio.metadata.temperature,
+      speed: audio.metadata.speed,
+      text: audio.metadata.text,
+      textLanguage: audio.metadata.text_language as 'en' | 'zh' | 'ja' | 'ko' | 'yue' | undefined,
+    });
+
+    // Select the character if available
+    // Try to find by ID first, then by name (for legacy data where ID might be the name)
+    const metadata = audio.metadata;
+    if (metadata.character_id) {
+      const characterById = characters.find(c => c.id === metadata.character_id);
+      if (characterById) {
+        selectCharacter(characterById.id);
+      } else if (metadata.character_name) {
+        // Fallback: find by name (case-insensitive)
+        const characterByName = characters.find(
+          c => c.name.toLowerCase() === metadata.character_name?.toLowerCase()
+        );
+        if (characterByName) {
+          selectCharacter(characterByName.id);
+        }
+      }
+    }
+
+    // Set reference language if available
+    if (audio.metadata.text_language) {
+      setReferenceLanguage(audio.metadata.text_language as 'en' | 'zh' | 'ja' | 'ko' | 'yue');
+    }
+
+    // Load reference audio if available
+    const refSource = audio.metadata.ref_audio_source;
+    if (refSource) {
+      try {
+        let audioUrl: string | null = null;
+        let filename = '';
+
+        if (refSource.startsWith('emotion:')) {
+          // Format: "emotion:Gender/Language/Emotion/filename.wav"
+          const path = refSource.replace('emotion:', '');
+          const parts = path.split('/');
+          if (parts.length >= 4) {
+            const [gender, language, emotion, ...filenameParts] = parts;
+            filename = filenameParts.join('/');
+            audioUrl = emotionAudioApi.getAudioUrl(gender, language, emotion, filename);
+          }
+        } else if (refSource.startsWith('character:')) {
+          // Format: "character:CharacterName/filename.wav"
+          const path = refSource.replace('character:', '');
+          const parts = path.split('/');
+          if (parts.length >= 2) {
+            const [characterName, ...filenameParts] = parts;
+            filename = filenameParts.join('/');
+            audioUrl = characterAudioApi.getAudioUrl(characterName, filename);
+          }
+        } else {
+          // Plain file path format: "Female\\zh\\excited\\youngvoice_template.wav"
+          // or "emotion_audio/Gender/Language/Emotion/filename.wav"
+          // Normalize path separators and remove double slashes
+          let normalizedPath = refSource.replace(/\\/g, '/').replace(/\/+/g, '/');
+          // Remove emotion_audio/ prefix if present
+          normalizedPath = normalizedPath.replace(/^emotion_audio\//, '');
+          const parts = normalizedPath.split('/').filter(p => p);
+
+          if (parts.length >= 2) {
+            filename = parts[parts.length - 1];
+            if (parts.length >= 4) {
+              // 4-part: gender/language/emotion/filename
+              const [gender, language, emotion] = parts;
+              audioUrl = emotionAudioApi.getAudioUrl(gender, language, emotion, filename);
+            } else if (parts.length === 3) {
+              // 3-part legacy: gender/emotion/filename
+              const [gender, emotion] = parts;
+              audioUrl = emotionAudioApi.getAudioUrlLegacy(gender, emotion, filename);
+            } else if (parts.length === 2) {
+              // 2-part: could be character audio or other folder
+              const [folder] = parts;
+              // Try character audio endpoint
+              audioUrl = characterAudioApi.getAudioUrl(folder, filename);
+            }
+          }
+        }
+
+        if (audioUrl) {
+          console.log('[Library] Fetching reference audio:', audioUrl);
+          const response = await fetch(audioUrl, { method: 'GET', mode: 'cors' });
+          if (response.ok) {
+            const blob = await response.blob();
+            // Determine MIME type
+            let mimeType = blob.type;
+            if (!mimeType || mimeType === 'application/octet-stream') {
+              if (filename.endsWith('.wav')) mimeType = 'audio/wav';
+              else if (filename.endsWith('.mp3')) mimeType = 'audio/mpeg';
+              else if (filename.endsWith('.flac')) mimeType = 'audio/flac';
+            }
+            const file = new File([blob], filename, { type: mimeType });
+            setReferenceAudio(file, refSource);
+            console.log('[Library] Reference audio loaded:', filename);
+          } else {
+            console.warn('[Library] Failed to fetch reference audio:', response.status, response.statusText);
+          }
+        } else {
+          console.warn('[Library] Could not construct URL for ref_audio_source:', refSource);
+        }
+      } catch (err) {
+        console.error('[Library] Failed to load reference audio:', err);
+        // Continue without reference audio - don't block navigation
+      }
+    }
+
+    // Navigate to synthesis page (Home)
+    navigate('/');
   };
 
   return (
@@ -241,6 +373,15 @@ export default function Library() {
 
                 {/* Actions */}
                 <div className="flex items-center justify-center gap-1">
+                  {audio.metadata && (
+                    <button
+                      onClick={() => handleUseSettings(audio)}
+                      className="p-1.5 rounded-lg hover:bg-surface transition-colors text-text-muted hover:text-secondary"
+                      title="使用設定 (Use Settings)"
+                    >
+                      <Cog6ToothIcon className="w-4 h-4" />
+                    </button>
+                  )}
                   <button
                     onClick={() => handleDownload(audio.filename)}
                     className="p-1.5 rounded-lg hover:bg-surface transition-colors text-text-muted hover:text-primary"

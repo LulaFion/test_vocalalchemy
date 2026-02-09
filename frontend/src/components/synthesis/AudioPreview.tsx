@@ -9,6 +9,7 @@ import {
   ArrowPathIcon,
   FolderPlusIcon,
   CheckIcon,
+  PencilIcon,
 } from '@heroicons/react/24/solid';
 
 export default function AudioPreview() {
@@ -34,6 +35,7 @@ export default function AudioPreview() {
   const [isExporting, setIsExporting] = useState(false);
   const [isSavingToLibrary, setIsSavingToLibrary] = useState(false);
   const [savedToLibrary, setSavedToLibrary] = useState(false);
+  const [displayName, setDisplayName] = useState('');  // User-editable display name (saved as "note")
 
   useEffect(() => {
     const audio = audioRef.current;
@@ -60,6 +62,7 @@ export default function AudioPreview() {
     setDuration(0);
     setIsPlaying(false);
     setSavedToLibrary(false);
+    setDisplayName('');  // Reset display name for new audio
 
     // Force load the audio to get duration
     audio.load();
@@ -157,6 +160,7 @@ export default function AudioPreview() {
         text,
         text_language: textLanguage,
         ref_audio_source: referenceAudioSource || undefined,
+        note: displayName.trim() || undefined,  // Save user-edited display name
       });
 
       setSavedToLibrary(true);
@@ -242,8 +246,23 @@ export default function AudioPreview() {
           </div>
         </div>
 
-        {/* Action Buttons */}
+        {/* Display Name Input + Action Buttons */}
         <div className="flex items-center gap-2">
+          {/* Editable Display Name */}
+          {!savedToLibrary && (
+            <div className="relative">
+              <PencilIcon className="w-4 h-4 text-text-muted absolute left-3 top-1/2 -translate-y-1/2" />
+              <input
+                type="text"
+                value={displayName}
+                onChange={(e) => setDisplayName(e.target.value)}
+                placeholder="顯示名稱 (Display name)"
+                className="input py-2 pl-9 pr-3 w-48 text-sm"
+                title="自訂顯示名稱，儲存後會顯示在音頻庫中 (Custom display name shown in library)"
+              />
+            </div>
+          )}
+
           {/* Save to Library Button */}
           <button
             onClick={handleSaveToLibrary}

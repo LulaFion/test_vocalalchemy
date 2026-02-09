@@ -150,7 +150,7 @@ export default function EmotionSelector() {
     setPlayingCharacterAudio(null);
   };
 
-  const handleUseCharacterAudio = async (filename: string) => {
+  const handleUseCharacterAudio = async (filename: string, text?: string) => {
     if (!selectedCharacter) return;
     try {
       const url = characterAudioApi.getAudioUrl(selectedCharacter.name, filename);
@@ -187,7 +187,12 @@ export default function EmotionSelector() {
       const duration = await validateAudioDuration(file);
       setAudioDuration(duration);
 
-      console.log('[EmotionSelector] Set reference audio:', filename, 'duration:', duration, 'source:', source);
+      // Auto-fill reference text if available from .txt file
+      if (text) {
+        setReferenceText(text);
+      }
+
+      console.log('[EmotionSelector] Set reference audio:', filename, 'duration:', duration, 'source:', source, 'text:', text);
 
       // Scroll to reference audio section
       referenceAudioSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -725,7 +730,7 @@ export default function EmotionSelector() {
                           ? 'bg-primary text-white'
                           : 'bg-canvas hover:bg-primary/20 text-text-muted'
                       }`}
-                      title={isCurrentPlaying ? '停止 (Stop)' : '試聽 (Play)'}
+                      title={isCurrentPlaying ? '停止 (Stop)' : '試聯 (Play)'}
                     >
                       {isCurrentPlaying ? (
                         <PauseIcon className="w-4 h-4" />
@@ -736,9 +741,16 @@ export default function EmotionSelector() {
                     <span className="text-sm text-text-primary" title={sample.name || sample.filename}>
                       {sample.name || sample.filename}
                     </span>
+                    {sample.text && (
+                      <DocumentTextIcon
+                        className="w-4 h-4 text-green-500"
+                        title={`文本: ${sample.text}`}
+                      />
+                    )}
                     <button
-                      onClick={() => handleUseCharacterAudio(sample.filename)}
+                      onClick={() => handleUseCharacterAudio(sample.filename, sample.text)}
                       className="text-sm text-primary hover:text-primary/80 font-medium px-2"
+                      title={sample.text ? `文本: ${sample.text}` : '無文本 (No text)'}
                     >
                       Use
                     </button>

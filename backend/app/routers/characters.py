@@ -7,6 +7,7 @@ import os
 
 from ..models.character import Character, CharacterCreate, CharacterUpdate
 from ..services.character_service import character_service
+from ..services.audio_utils import convert_audio_to_wav
 from ..config import settings
 
 router = APIRouter(prefix="/api/characters", tags=["characters"])
@@ -27,9 +28,9 @@ async def list_emotion_audio():
     if not emotion_dir.exists():
         return {"genders": []}
 
-    result = {"genders": []}
+    result = {"genders": [], "characters": []}
 
-    # Only include Female and Male folders
+    # Include Female and Male folders (generic templates)
     for gender_name in ["Female", "Male"]:
         gender_dir = emotion_dir / gender_name
         if not gender_dir.exists() or not gender_dir.is_dir():
@@ -80,6 +81,40 @@ async def list_emotion_audio():
 
         if gender_data["emotions"]:
             result["genders"].append(gender_data)
+
+    # Include fine-tuned character folders (not Female/Male)
+    excluded_folders = {"Female", "Male"}
+    for char_dir in sorted(emotion_dir.iterdir()):
+        if not char_dir.is_dir() or char_dir.name in excluded_folders:
+            continue
+
+        char_data = {
+            "name": char_dir.name,
+            "samples": []
+        }
+
+        # Collect audio files directly in character folder
+        for audio_file in sorted(char_dir.glob("*")):
+            if audio_file.suffix.lower() in ['.wav', '.mp3', '.flac']:
+                # Check for matching .txt file with transcript
+                txt_file = audio_file.with_suffix('.txt')
+                transcript = None
+                if txt_file.exists():
+                    try:
+                        transcript = txt_file.read_text(encoding='utf-8').strip()
+                    except Exception:
+                        pass
+
+                sample_data = {
+                    "filename": audio_file.name,
+                    "name": audio_file.stem.replace("_", " ").replace("template", "").strip() or audio_file.stem
+                }
+                if transcript:
+                    sample_data["text"] = transcript
+                char_data["samples"].append(sample_data)
+
+        if char_data["samples"]:
+            result["characters"].append(char_data)
 
     return result
 
@@ -166,10 +201,22 @@ async def list_character_audio(character_name: str):
     samples = []
     for audio_file in sorted(audio_dir.glob("*")):
         if audio_file.suffix.lower() in ['.wav', '.mp3', '.flac']:
-            samples.append({
+            # Check for matching .txt file with transcript
+            txt_file = audio_file.with_suffix('.txt')
+            transcript = None
+            if txt_file.exists():
+                try:
+                    transcript = txt_file.read_text(encoding='utf-8').strip()
+                except Exception:
+                    pass
+
+            sample_data = {
                 "filename": audio_file.name,
                 "name": audio_file.stem.replace("_", " ").replace("template", "").strip() or audio_file.stem
-            })
+            }
+            if transcript:
+                sample_data["text"] = transcript
+            samples.append(sample_data)
 
     return {"samples": samples}
 
@@ -306,53 +353,14 @@ async def upload_reference_audio(character_id: str, file: UploadFile = File(...)
     with open(temp_original, "wb") as f:
         f.write(content)
 
-    # Convert to proper WAV format
+    # Convert to proper WAV format using shared utility
     output_filename = f"default_{uuid.uuid4().hex[:8]}.wav"
     output_path = ref_dir / output_filename
-    converted = False
 
-    # Try soundfile first
-    try:
-        import soundfile as sf
-        import numpy as np
-
-        audio_data, sample_rate = sf.read(str(temp_original))
-
-        # Convert to mono if stereo
-        if len(audio_data.shape) > 1 and audio_data.shape[1] > 1:
-            audio_data = audio_data.mean(axis=1)
-
-        # Ensure float32 and normalize
-        audio_data = audio_data.astype(np.float32)
-        max_val = np.abs(audio_data).max()
-        if max_val > 1.0:
-            audio_data = audio_data / max_val
-
-        # Write as PCM_16 WAV
-        sf.write(str(output_path), audio_data, sample_rate, subtype='PCM_16')
-        converted = True
-    except Exception as e:
-        print(f"[Characters] Soundfile conversion failed: {e}")
-
-    # Try librosa as fallback
-    if not converted:
-        try:
-            import librosa
-            import soundfile as sf
-
-            audio_data, sample_rate = librosa.load(str(temp_original), sr=None, mono=True)
-            sf.write(str(output_path), audio_data, sample_rate, subtype='PCM_16')
-            converted = True
-        except Exception as e:
-            print(f"[Characters] Librosa conversion failed: {e}")
-
-    # Clean up temp file
-    try:
-        os.remove(temp_original)
-    except Exception:
-        pass
+    converted, error = convert_audio_to_wav(temp_original, output_path, delete_original=True)
 
     if not converted:
+        print(f"[Characters] Audio conversion failed: {error}")
         raise HTTPException(status_code=400, detail="Failed to convert audio file. Please try a different format.")
 
     return {"path": str(output_path), "filename": output_filename}

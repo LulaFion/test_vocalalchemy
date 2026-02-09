@@ -244,6 +244,8 @@ export interface LibraryAudioMetadata {
   text?: string;
   text_language?: string;
   ref_audio_source?: string;  // e.g., "emotion:Male/Happy/happy_01.wav" or "character:Xixi/greeting.wav" or "upload:custom.wav"
+  note?: string;  // User-editable display name
+  audio_filename?: string;  // Linked audio filename (when JSON and audio have different names)
   created_at?: string;
 }
 
@@ -268,6 +270,7 @@ export interface SaveToLibraryRequest {
   text?: string;
   text_language?: string;
   ref_audio_source?: string;  // e.g., "emotion:Male/Happy/happy_01.wav" or "character:Xixi/greeting.wav" or "upload:custom.wav"
+  note?: string;  // User-editable display name
 }
 
 export const libraryApi = {

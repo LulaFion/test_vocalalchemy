@@ -137,8 +137,12 @@ Through the AI inference engine, **combine both in real-time** to generate final
 🔄 **Real-time Synthesis** - Fast voice generation without retraining
 📊 **Progress Tracking** - Visual feedback during training
 🌐 **Multi-language** - Support for Chinese, English, Japanese, Cantonese, Korean
-📁 **Audio Library** - Save and manage well-generated audio files
+📁 **Audio Library** - Save and manage well-generated audio files with metadata
+🔧 **Use Settings** - Apply saved synthesis parameters from library items to quickly recreate similar audio
+📋 **Custom Display Name** - Set editable display names (note) when saving audio to library
 🗑️ **Soft Delete** - 7-day trash retention for deleted characters with restore option
+🧹 **Auto Cleanup** - Generated audio older than 24 hours is automatically cleaned on startup
+📝 **Reference Text Auto-fill** - Transcript from .txt files automatically fills reference text field
 🐳 **Docker Ready** - Full Docker/GitLab CI/CD support for deployment
 🔠 **UI Language Requirement:** All user-facing text in the web application should be displayed in Chinese with English in parentheses. Example: `角色聲音 (Character Voice)`
 
@@ -177,13 +181,64 @@ VocalAlchemy/
 │   │   ├── services/      # Business logic
 │   │   └── models/        # Pydantic models
 │   └── data/              # Runtime data
-│       ├── audio/         # Generated audio files
-│       ├── library/       # Saved audio library
-│       ├── emotion_audio/ # Reference audio templates (Male/Female emotions, character-specific)
+│       ├── audio/         # Generated audio files (auto-cleaned after 24h)
+│       ├── library/       # Saved audio library (permanent, user-managed)
+│       ├── emotion_audio/ # Reference audio templates
+│       │   ├── Female/    # Female voice templates by language/emotion
+│       │   ├── Male/      # Male voice templates by language/emotion
+│       │   ├── {Character}/ # Fine-tuned character reference audio (e.g., Xixi/, Zordon/)
+│       │   └── *.txt      # Transcript files (same name as audio, auto-fills reference text)
 │       ├── models/        # GPT_weights, SoVITS_weights
 │       └── training_projects/
 └── models/                # Trained voice models
 ```
+
+---
+
+## Storage Policy
+
+| Location | Purpose | Cleanup |
+|----------|---------|---------|
+| `data/audio/` | Temporary generated audio | Auto-cleaned if older than 24 hours on backend startup |
+| `data/library/` | User-saved audio files | Never auto-deleted (manual delete only) |
+| `data/emotion_audio/` | Reference audio templates | Permanent (shipped with project) |
+
+### Reference Audio with Transcripts
+
+Place a `.txt` file with the same name as an audio file to enable automatic reference text filling:
+```
+emotion_audio/Xixi/template1.wav
+emotion_audio/Xixi/template1.txt  # Contains transcript, auto-fills when user clicks "Use"
+```
+
+### Library Metadata (JSON Sidecar)
+
+Each saved audio in `data/library/` can have a JSON sidecar file with synthesis metadata:
+```json
+{
+  "top_k": 45,
+  "top_p": 0.45,
+  "temperature": 0.8,
+  "speed": 1.0,
+  "duration": 1.21,
+  "character_id": "54d6b719",
+  "character_name": "Xixi",
+  "text": "好運來了",
+  "text_language": "zh",
+  "ref_audio_source": "Female\\zh\\excited\\youngvoice_template.wav",
+  "note": "女聲愉快年輕",
+  "audio_filename": "女聲愉快年輕_好運來了.wav",
+  "created_at": "2026-01-27T15:16:00.015261"
+}
+```
+
+**Key fields:**
+- `note` - User-editable display name (shown instead of filename in library)
+- `audio_filename` - Links JSON to audio file when filenames differ (for renamed files)
+- `ref_audio_source` - Reference audio path used for synthesis (supports multiple formats)
+
+**"Use Settings" Feature:**
+Click the gear icon (⚙️) on any library item to apply its saved parameters to the Voice Synthesis page, including character selection, synthesis parameters, and reference audio.
 
 ---
 

@@ -51,18 +51,54 @@ def save_metadata(audio_filename: str, metadata: LibraryAudioMetadata) -> bool:
 async def list_library_audio():
     """
     List all audio files in the library with metadata.
+    Supports linking via:
+    1. Same filename stem (audio.wav + audio.json)
+    2. audio_filename field in JSON (for renamed audio files)
     """
     # Ensure library directory exists
     LIBRARY_DIR.mkdir(parents=True, exist_ok=True)
 
+    # First, build a map of audio_filename -> json metadata
+    # This handles cases where JSON and audio have different names
+    audio_to_metadata = {}  # audio_filename -> (json_stem, metadata_dict)
+
+    for json_file in LIBRARY_DIR.glob("*.json"):
+        try:
+            with open(json_file, 'r', encoding='utf-8') as f:
+                metadata = json.load(f)
+                # Check if this JSON links to a different audio file
+                linked_audio = metadata.get('audio_filename')
+                if linked_audio:
+                    audio_to_metadata[linked_audio] = (json_file.stem, metadata)
+                else:
+                    # Default: assume audio filename matches JSON stem
+                    for ext in ['.wav', '.mp3', '.flac', '.ogg', '.m4a']:
+                        potential_audio = f"{json_file.stem}{ext}"
+                        if (LIBRARY_DIR / potential_audio).exists():
+                            audio_to_metadata[potential_audio] = (json_file.stem, metadata)
+                            break
+        except Exception:
+            pass
+
     files = []
+    seen_audio = set()
+
     for audio_file in sorted(LIBRARY_DIR.glob("*")):
         if audio_file.suffix.lower() in ['.wav', '.mp3', '.flac', '.ogg', '.m4a']:
             stat = audio_file.stat()
-            metadata = load_metadata(audio_file.name)
+            audio_name = audio_file.name
+
+            # Try to find metadata for this audio file
+            metadata = None
+            if audio_name in audio_to_metadata:
+                _, metadata = audio_to_metadata[audio_name]
+                seen_audio.add(audio_name)
+            else:
+                # Fallback: try loading by same stem name
+                metadata = load_metadata(audio_name)
 
             files.append({
-                "filename": audio_file.name,
+                "filename": audio_name,
                 "name": audio_file.stem.replace("_", " ").replace("-", " "),
                 "size": stat.st_size,
                 "createdAt": stat.st_mtime,
@@ -171,6 +207,7 @@ async def save_to_library(request: SaveToLibraryRequest):
             text=request.text,
             text_language=request.text_language,
             ref_audio_source=request.ref_audio_source,
+            note=request.note,
             created_at=datetime.now().isoformat(),
         )
         save_metadata(request.filename, metadata)
